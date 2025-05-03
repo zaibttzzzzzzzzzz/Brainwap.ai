@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brainzaib - Smart AI Assistant</title>
+    <style>
+        :root {
+            --primary: #4CAF50;
+            --secondary: #45a049;
+            --user-msg: #e3f2fd;
+            --bot-msg: #f1f1f1;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background-color: var(--primary);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+        }
+        
+        .chat-container {
+            background-color: white;
+            border-radius: 0 0 8px 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            height: 500px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        
+        #chat-output {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .input-area {
+            display: flex;
+            padding: 15px;
+            border-top: 1px solid #eee;
+            background: white;
+            position: sticky;
+            bottom: 0;
+        }
+        
+        #user-input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        
+        #send-btn, #voice-btn {
+            padding: 12px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            margin-left: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #send-btn:hover, #voice-btn:hover {
+            background-color: var(--secondary);
+        }
+        
+        .message {
+            padding: 10px 15px;
+            border-radius: 18px;
+            margin-bottom: 10px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        
+        .user-message {
+            background-color: var(--user-msg);
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+        
+        .bot-message {
+            background-color: var(--bot-msg);
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+        
+        .typing-indicator {
+            display: inline-block;
+            padding: 10px 15px;
+            background-color: var(--bot-msg);
+            border-radius: 18px;
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+        
+        .typing-indicator span {
+            height: 8px;
+            width: 8px;
+            background-color: #666;
+            border-radius: 50%;
+            display: inline-block;
+            margin: 0 2px;
+            animation: bounce 1.5s infinite ease-in-out;
+        }
+        
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes bounce {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-5px); }
+        }
+        
+        .language-info {
+            font-size: 12px;
+            color: #666;
+            text-align: right;
+            margin-top: 5px;
+        }
+        
+        .voice-recording {
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Brainzaib AI Assistant</h1>
+            <p>Ask me anything in any language!</p>
+        </header>
+        
+        <div class="chat-container">
+            <div id="chat-output"></div>
+            
+            <div class="input-area">
+                <input type="text" id="user-input" placeholder="Type or speak your question..." autocomplete="off">
+                <button id="voice-btn" title="Voice Input">🎤</button>
+                <button id="send-btn">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Enhanced AI Responses Database
+        const knowledgeBase = {
+            "general": {
+                "en": {
+                    "hello": ["Hello! I'm Brainzaib. How can I assist you today?", "Hi there! What can I do for you?"],
+                    "how are you": ["I'm functioning optimally, thank you! How about you?", "All systems are good! How can I help?"],
+                    "your name": ["I'm Brainzaib, your multilingual AI assistant!", "You can call me Brainzaib!"],
+                    "help": ["I can answer questions, translate between languages, and help with various topics!", "I specialize in multilingual assistance and knowledge!"],
+                    "default": ["I'm processing your question...", "Let me think about that..."]
+                },
+                "hi": {
+                    "hello": ["नमस्ते! मैं Brainzaib हूँ। मैं आपकी कैसे मदद कर सकता हूँ?", "हैलो! आज मैं आपके लिए क्या कर सकता हूँ?"],
+                    "how are you": ["मैं बिल्कुल ठीक हूँ, धन्यवाद! आप कैसे हैं?", "सब कुछ सही चल रहा है! आप कैसे हैं?"],
+                    "your name": ["मेरा नाम Brainzaib है!", "मैं Brainzaib हूँ, आपका सहायक!"],
+                    "help": ["मैं सवालों के जवाब दे सकता हूँ, भाषाएँ बदल सकता हूँ, और कई विषयों में मदद कर सकता हूँ!", "मैं कई भाषाओं में मदद कर सकता हूँ!"],
+                    "default": ["मैं आपके सवाल पर विचार कर रहा हूँ...", "मुझे इस बारे में सोचने दीजिए..."]
+                },
+                "ur": {
+                    "hello": ["السلام علیکم! میں Brainzaib ہوں۔ میں آپ کی کس طرح مدد کر سکتا ہوں؟", "ہیلو! آج میں آپ کے لیے کیا کر سکتا ہوں؟"],
+                    "how are you": ["میں بالکل ٹھیک ہوں، شکریہ! آپ کیسے ہیں؟", "سب کچھ ٹھیک چل رہا ہے! آپ کیسے ہیں؟"],
+                    "your name": ["میرا نام Brainzaib ہے!", "میں Brainzaib ہوں، آپ کا معاون!"],
+                    "help": ["میں سوالات کے جوابات دے سکتا ہوں، زبانیں تبدیل کر سکتا ہوں، اور کئی موضوعات میں مدد کر سکتا ہوں!", "میں کئی زبانوں میں مدد کر سکتا ہوں!"],
+                    "default": ["میں آپ کے سوال پر غور کر رہا ہوں...", "مجھے اس بارے میں سوچنے دیں..."]
+                }
+            },
+            "knowledge": {
+                // Add your knowledge questions here in all languages
+                "en": {
+                    "capital of france": "The capital of France is Paris.",
+                    "current time": `The current time is ${new Date().toLocaleTimeString()}.`
+                },
+                "hi": {
+                    "capital of france": "फ्रांस की राजधानी पेरिस है।",
+                    "current time": `अभी समय है ${new Date().toLocaleTimeString('hi-IN')}.`
+                },
+                "ur": {
+                    "capital of france": "فرانس کا دارالحکومت پیرس ہے۔",
+                    "current time": `اب وقت ہے ${new Date().toLocaleTimeString('ur-PK')}.`
+                }
+            }
+        };
+
+        // DOM elements
+        const chatOutput = document.getElementById('chat-output');
+        const userInput = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+        const voiceBtn = document.getElementById('voice-btn');
+
+        // Speech recognition setup
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition;
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                userInput.value = transcript;
+                processInput();
+            };
+            
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error', event.error);
+                addMessage("Sorry, I couldn't hear you properly. Please try again.", false);
+            };
+        }
+
+        // Add message to chat
+        function addMessage(text, isUser, language = '') {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add(isUser ? 'user-message' : 'bot-message', 'message');
+            messageDiv.textContent = text;
+            
+            if (language && !isUser) {
+                const langInfo = document.createElement('div');
+                langInfo.classList.add('language-info');
+                langInfo.textContent = `Detected language: ${language.toUpperCase()}`;
+                messageDiv.appendChild(langInfo);
+            }
+            
+            chatOutput.appendChild(messageDiv);
+            chatOutput.scrollTop = chatOutput.scrollHeight;
+        }
+
+        // Show typing indicator
+        function showTyping() {
+            const typingDiv = document.createElement('div');
+            typingDiv.classList.add('typing-indicator');
+            typingDiv.innerHTML = '<span></span><span></span><span></span>';
+            chatOutput.appendChild(typingDiv);
+            chatOutput.scrollTop = chatOutput.scrollHeight;
+            return typingDiv;
+        }
+
+        // Hide typing indicator
+        function hideTyping(typingElement) {
+            if (typingElement && typingElement.parentNode) {
+                chatOutput.removeChild(typingElement);
+            }
+        }
+
+        // Detect language from text (simple implementation)
+        function detectLanguage(text) {
+            // Hindi detection
+            if (/[\u0900-\u097F]/.test(text)) return 'hi';
+            // Urdu/Arabic detection
+            if (/[\u0600-\u06FF]/.test(text)) return 'ur';
+            // Default to English
+            return 'en';
+        }
+
+        // Get response from knowledge base
+        function getResponse(text, language) {
+            const lowerText = text.toLowerCase();
+            
+            // Check general questions first
+            if (knowledgeBase.general[language] && knowledgeBase.general[language][lowerText]) {
+                const possibleResponses = knowledgeBase.general[language][lowerText];
+                return possibleResponses[Math.floor(Math.random() * possibleResponses.length)];
+            }
+            
+            // Check knowledge base
+            if (knowledgeBase.knowledge[language]) {
+                for (const key in knowledgeBase.knowledge[language]) {
+                    if (lowerText.includes(key)) {
+                        return knowledgeBase.knowledge[language][key];
+                    }
+                }
+            }
+            
+            // If no match found, use default
+            return knowledgeBase.general[language]?.default[0] || "I'm still learning. Could you ask me something else?";
+        }
+
+        // Process user input
+        function processInput() {
+            const text = userInput.value.trim();
+            if (!text) return;
+            
+            const detectedLanguage = detectLanguage(text);
+            addMessage(text, true);
+            userInput.value = '';
+            
+            const typingElement = showTyping();
+            
+            // Simulate AI processing delay
+            setTimeout(() => {
+                hideTyping(typingElement);
+                const response = getResponse(text, detectedLanguage);
+                addMessage(response, false, detectedLanguage);
+                
+                // Here you would typically call your AI API
+                // For example: getAIResponse(text, detectedLanguage).then(response => {...});
+            }, 1500);
+        }
+
+        // Voice input handler
+        function startVoiceInput() {
+            if (!recognition) {
+                addMessage("Voice input is not supported in your browser.", false);
+                return;
+            }
+            
+            voiceBtn.classList.add('voice-recording');
+            try {
+                recognition.start();
+                addMessage("Listening... Speak now.", false);
+            } catch (e) {
+                voiceBtn.classList.remove('voice-recording');
+                addMessage("Error accessing microphone. Please check permissions.", false);
+            }
+        }
+
+        // Event listeners
+        sendBtn.addEventListener('click', processInput);
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') processInput();
+        });
+        voiceBtn.addEventListener('click', startVoiceInput);
+
+        // Stop voice recording when speech ends
+        if (recognition) {
+            recognition.onend = () => {
+                voiceBtn.classList.remove('voice-recording');
+            };
+        }
+
+        // Initial greeting
+        setTimeout(() => {
+            const greetings = {
+                "en": "Hello! I'm Brainzaib. You can ask me anything in any language!",
+                "hi": "नमस्ते! मैं Brainzaib हूँ। आप मुझसे किसी भी भाषा में कुछ भी पूछ सकते हैं!",
+                "ur": "السلام علیکم! میں Brainzaib ہوں۔ آپ مجھ سے کسی بھی زبان میں کچھ بھی پوچھ سکتے ہیں!"
+            };
+            
+            const userLanguage = navigator.language.split('-')[0];
+            const greeting = greetings[userLanguage] || greetings['en'];
+            addMessage(greeting, false);
+        }, 800);
+    </script>
+</body>
+</html>
